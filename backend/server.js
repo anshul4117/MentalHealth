@@ -25,7 +25,7 @@ app.use(cors({
   origin: [
     "http://localhost:3000",
     "https://mind-pulse-iota.vercel.app",
-    "https://v0-mind-pulse-web-app.vercel.app",
+    "https://mindpulse-lovat.vercel.app",
   ],
   credentials: true,
 }));
