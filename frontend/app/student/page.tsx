@@ -262,6 +262,51 @@ export default function StudentDashboard() {
           </div>
         )}
 
+        {/* Check-ins History List */}
+        {checkins.length > 0 && (
+          <div className="glass-card rounded-xl overflow-hidden mb-8">
+            <div className="p-6 border-b border-white/5">
+              <h2 className="text-lg font-semibold text-mindpulse-text">Check-in History</h2>
+            </div>
+            <div className="overflow-x-auto max-h-[400px]">
+              <table className="w-full text-left">
+                <thead className="sticky top-0 bg-mindpulse-bg/95 backdrop-blur z-10">
+                  <tr className="border-b border-white/5">
+                    <th className="px-6 py-4 text-sm font-medium text-mindpulse-muted">Date & Time</th>
+                    <th className="px-6 py-4 text-sm font-medium text-mindpulse-muted">Mood</th>
+                    <th className="px-6 py-4 text-sm font-medium text-mindpulse-muted">Stress</th>
+                    <th className="px-6 py-4 text-sm font-medium text-mindpulse-muted">Sleep</th>
+                    <th className="px-6 py-4 text-sm font-medium text-mindpulse-muted">Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {checkins.map((checkin, idx) => (
+                    <tr key={idx} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                      <td className="px-6 py-4 text-sm text-mindpulse-text whitespace-nowrap">
+                        {new Date(checkin.createdAt).toLocaleDateString("en-IN", {
+                          day: "numeric", month: "short", year: "numeric",
+                          hour: "2-digit", minute: "2-digit",
+                        })}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2.5 h-2.5 rounded-full ${checkin.mood >= 4 ? 'bg-mindpulse-teal' : checkin.mood >= 3 ? 'bg-mindpulse-amber' : 'bg-mindpulse-coral'}`} />
+                          <span className="text-sm text-mindpulse-text">{checkin.mood}/5</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-mindpulse-text">{checkin.stress}/10</td>
+                      <td className="px-6 py-4 text-sm text-mindpulse-text">{checkin.sleep}h</td>
+                      <td className="px-6 py-4 text-sm text-mindpulse-muted max-w-xs truncate" title={checkin.note}>
+                        {checkin.note || "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* Messages from Counsellor */}
         <div className="glass-card rounded-xl p-6 mb-8">
           <h2 className="text-lg font-semibold text-mindpulse-text mb-4 flex items-center gap-2">
@@ -284,15 +329,23 @@ export default function StudentDashboard() {
               {messages.map((msg, i) => (
                 <div
                   key={i}
-                  className="p-4 rounded-xl bg-white/5 border border-white/5"
+                  className="p-4 rounded-xl bg-emerald-500/20 border-2 border-emerald-400/50 shadow-[0_0_20px_rgba(16,185,129,0.15)] transition-all hover:shadow-[0_0_25px_rgba(16,185,129,0.25)] border-l-4 border-l-emerald-400"
                 >
-                  <p className="text-sm text-mindpulse-text mb-2">{msg.content}</p>
-                  <p className="text-xs text-mindpulse-muted">
-                    {new Date(msg.createdAt).toLocaleDateString("en-IN", {
-                      day: "numeric", month: "short", year: "numeric",
-                      hour: "2-digit", minute: "2-digit",
-                    })}
-                  </p>
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-full bg-emerald-500/30 flex items-center justify-center shrink-0 ring-2 ring-emerald-400/40">
+                      <span className="text-lg">🧑‍⚕️</span>
+                    </div>
+                    <div>
+                      <p className="text-sm mb-1 font-semibold text-emerald-400">Counsellor Message</p>
+                      <p className="text-sm text-mindpulse-text mb-2">{msg.content}</p>
+                      <p className="text-xs text-emerald-400/70">
+                        {new Date(msg.createdAt).toLocaleDateString("en-IN", {
+                          day: "numeric", month: "short", year: "numeric",
+                          hour: "2-digit", minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
