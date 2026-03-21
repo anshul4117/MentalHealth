@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Brain } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 const navLinks = [
   { href: "/", label: "Check-in" },
@@ -12,6 +13,7 @@ const navLinks = [
 
 export function Navbar() {
   const pathname = usePathname();
+  const { isLoggedIn, isStudent, isCounsellor, isLoading } = useAuth();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 px-4 py-4">
@@ -41,19 +43,50 @@ export function Navbar() {
           ))}
         </div>
 
-        {/* Counsellor Login Button */}
-        <Link
-          href="/login"
-          className="relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg group"
-          style={{
-            background: "linear-gradient(#0F1729, #0F1729) padding-box, linear-gradient(135deg, #6C63FF, #00D4AA) border-box",
-            border: "1px solid transparent",
-          }}
-        >
-          <span className="text-mindpulse-text group-hover:text-white transition-colors">
-            Counsellor Login
-          </span>
-        </Link>
+        {/* Right Side — Auth-aware */}
+        <div className="flex items-center gap-3">
+          {!isLoading && isLoggedIn ? (
+            <>
+              {isStudent && (
+                <Link
+                  href="/student"
+                  className="px-4 py-2 text-sm font-medium rounded-lg bg-white/5 border border-white/10 text-mindpulse-text hover:bg-white/10 transition-all"
+                >
+                  My Dashboard
+                </Link>
+              )}
+              {isCounsellor && (
+                <Link
+                  href="/dashboard"
+                  className="px-4 py-2 text-sm font-medium rounded-lg bg-white/5 border border-white/10 text-mindpulse-text hover:bg-white/10 transition-all"
+                >
+                  Counsellor Panel
+                </Link>
+              )}
+            </>
+          ) : !isLoading ? (
+            <>
+              <Link
+                href="/register"
+                className="hidden sm:inline-block px-4 py-2 text-sm font-medium text-mindpulse-muted hover:text-mindpulse-text transition-colors"
+              >
+                Register
+              </Link>
+              <Link
+                href="/login"
+                className="relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg group"
+                style={{
+                  background: "linear-gradient(#0F1729, #0F1729) padding-box, linear-gradient(135deg, #6C63FF, #00D4AA) border-box",
+                  border: "1px solid transparent",
+                }}
+              >
+                <span className="text-mindpulse-text group-hover:text-white transition-colors">
+                  Login
+                </span>
+              </Link>
+            </>
+          ) : null}
+        </div>
       </div>
     </nav>
   );

@@ -1,34 +1,56 @@
 "use client";
 
-import { useState } from "react";
-import { Users, AlertTriangle, TrendingUp, Heart, ArrowUp, ArrowDown, Send, X, CheckCircle2 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { Users, AlertTriangle, TrendingUp, Heart, ArrowUp, ArrowDown, Send, X, CheckCircle2, RefreshCw } from "lucide-react";
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, Line } from "recharts";
+import { useAuth } from "@/lib/auth-context";
+import {
+  getDashboard, sendMessage as apiSendMessage, resolveAlert as apiResolveAlert,
+  type DashboardAlert, type MoodTrendEntry, type RecentCheckin,
+} from "@/lib/api";
 
 // ── Types ──────────────────────────────────────────────────────────
-type Alert = {
+type AlertForModal = {
   id: string;
+  tokenId: string;
   department: string;
   severity: string;
-  message: string;
+  reason: string;
 };
 
 // ── Send Message Modal ─────────────────────────────────────────────
-function SendMessageModal({ alert, onClose }: { alert: Alert | null; onClose: () => void }) {
+function SendMessageModal({ alert, onClose, onSent }: {
+  alert: AlertForModal | null;
+  onClose: () => void;
+  onSent: () => void;
+}) {
   const [message, setMessage] = useState("");
   const [urgent, setUrgent] = useState(false);
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
 
   if (!alert) return null;
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!message.trim()) return;
-    setSent(true);
-    setTimeout(() => {
-      setSent(false);
-      setMessage("");
-      setUrgent(false);
-      onClose();
-    }, 1800);
+    setSending(true);
+    setError("");
+    try {
+      await apiSendMessage({ tokenId: alert.tokenId, message: message.trim(), urgent });
+      setSent(true);
+      setTimeout(() => {
+        setSent(false);
+        setMessage("");
+        setUrgent(false);
+        onSent();
+        onClose();
+      }, 1800);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send message.");
+    }
+    setSending(false);
   };
 
   return (
@@ -54,7 +76,7 @@ function SendMessageModal({ alert, onClose }: { alert: Alert | null; onClose: ()
 
         {/* Student Info */}
         <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 mb-4">
-          <code className="text-sm font-mono text-mindpulse-text">{alert.id}</code>
+          <code className="text-sm font-mono text-mindpulse-text">{alert.tokenId}</code>
           <span className="text-xs px-2 py-0.5 rounded bg-white/5 text-mindpulse-muted">
             {alert.department}
           </span>
@@ -80,13 +102,13 @@ function SendMessageModal({ alert, onClose }: { alert: Alert | null; onClose: ()
               </label>
               <textarea
                 value={message}
-                onChange={(e) => setMessage(e.target.value.slice(0, 300))}
+                onChange={(e) => setMessage(e.target.value.slice(0, 1000))}
                 placeholder="e.g. Hey, we noticed you might be going through something tough. We're here whenever you're ready to talk — no pressure at all. 💚"
                 rows={4}
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-mindpulse-text placeholder:text-mindpulse-muted/40 focus:outline-none focus:ring-2 focus:ring-mindpulse-purple/50 text-sm resize-none transition-all"
               />
               <div className="text-right text-xs text-mindpulse-muted mt-1">
-                {message.length}/300
+                {message.length}/1000
               </div>
             </div>
 
@@ -105,13 +127,23 @@ function SendMessageModal({ alert, onClose }: { alert: Alert | null; onClose: ()
               </span>
             </label>
 
+            {error && (
+              <p className="text-mindpulse-coral text-sm text-center bg-mindpulse-coral/10 py-2 px-4 rounded-lg mb-4">
+                ❌ {error}
+              </p>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={handleSend}
-                disabled={!message.trim()}
+                disabled={!message.trim() || sending}
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-mindpulse-purple to-mindpulse-teal text-white font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all"
               >
-                <Send className="w-4 h-4" />
+                {sending ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
                 Send Message
               </button>
               <button
@@ -128,84 +160,136 @@ function SendMessageModal({ alert, onClose }: { alert: Alert | null; onClose: ()
   );
 }
 
-// ── Data ───────────────────────────────────────────────────────────
-const stats = [
-  { label: "Total Check-ins", value: "142", trend: "+12%", trendUp: true, icon: Users, gradient: "from-mindpulse-purple to-blue-500" },
-  { label: "At-Risk Students", value: "7", trend: "+2", trendUp: true, icon: AlertTriangle, gradient: "from-mindpulse-coral to-red-600", isAlert: true },
-  { label: "Avg Campus Mood", value: "3.2/5", trend: "-0.3", trendUp: false, icon: TrendingUp, gradient: "from-mindpulse-amber to-orange-500" },
-  { label: "Interventions", value: "4", trend: "+1", trendUp: true, icon: Heart, gradient: "from-mindpulse-teal to-green-500" },
-];
-
-const moodData = [
-  { date: "Mar 1", mood: 3.5, threshold: 2.5 },
-  { date: "Mar 2", mood: 3.2, threshold: 2.5 },
-  { date: "Mar 3", mood: 3.8, threshold: 2.5 },
-  { date: "Mar 4", mood: 3.1, threshold: 2.5 },
-  { date: "Mar 5", mood: 2.9, threshold: 2.5 },
-  { date: "Mar 6", mood: 3.0, threshold: 2.5 },
-  { date: "Mar 7", mood: 3.4, threshold: 2.5 },
-  { date: "Mar 8", mood: 3.6, threshold: 2.5 },
-  { date: "Mar 9", mood: 3.2, threshold: 2.5 },
-  { date: "Mar 10", mood: 2.8, threshold: 2.5 },
-  { date: "Mar 11", mood: 3.1, threshold: 2.5 },
-  { date: "Mar 12", mood: 3.3, threshold: 2.5 },
-  { date: "Mar 13", mood: 3.5, threshold: 2.5 },
-  { date: "Mar 14", mood: 3.2, threshold: 2.5 },
-];
-
-const alerts: Alert[] = [
-  { id: "STU-7291", department: "Engineering", severity: "high", message: "Mood score 1.5 for 3 consecutive days" },
-  { id: "STU-4823", department: "Psychology", severity: "high", message: "Stress level 10/10, sleep under 4h" },
-  { id: "STU-9156", department: "Business", severity: "medium", message: "Declining mood trend over 5 days" },
-  { id: "STU-3847", department: "Arts", severity: "medium", message: "High stress during exam period" },
-];
-
-const recentCheckins = [
-  { id: "STU-8372", department: "Computer Science", mood: 4.2, time: "2 min ago" },
-  { id: "STU-1924", department: "Medicine", mood: 2.8, time: "5 min ago" },
-  { id: "STU-5638", department: "Law", mood: 3.5, time: "12 min ago" },
-  { id: "STU-7291", department: "Engineering", mood: 1.8, time: "18 min ago" },
-  { id: "STU-4102", department: "Psychology", mood: 4.0, time: "25 min ago" },
-];
-
 function getMoodColor(mood: number) {
   if (mood >= 4) return "bg-mindpulse-teal";
   if (mood >= 3) return "bg-mindpulse-amber";
   return "bg-mindpulse-coral";
 }
 
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
 // ── Page ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const [activeAlert, setActiveAlert] = useState<Alert | null>(null);
+  const { user, isLoggedIn, isCounsellor, isLoading } = useAuth();
+  const router = useRouter();
+
+  const [activeAlert, setActiveAlert] = useState<AlertForModal | null>(null);
+  const [stats, setStats] = useState({ totalCheckins: 0, atRiskCount: 0, avgMood: 0, interventions: 0 });
+  const [recentCheckins, setRecentCheckins] = useState<RecentCheckin[]>([]);
+  const [alerts, setAlerts] = useState<DashboardAlert[]>([]);
+  const [moodTrend, setMoodTrend] = useState<MoodTrendEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await getDashboard();
+      setStats(data.stats);
+      setRecentCheckins(data.recentCheckins);
+      setAlerts(data.alerts);
+      setMoodTrend(data.moodTrend);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load dashboard.");
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading && (!isLoggedIn || !isCounsellor)) {
+      router.push("/login");
+      return;
+    }
+    if (isLoggedIn && isCounsellor) {
+      fetchData();
+    }
+  }, [isLoggedIn, isCounsellor, isLoading, router, fetchData]);
+
+  const handleResolve = async (alertId: string) => {
+    try {
+      await apiResolveAlert(alertId);
+      fetchData(); // Refresh
+    } catch (err) {
+      console.error("Resolve failed:", err);
+    }
+  };
+
+  if (isLoading || loading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-2 border-mindpulse-purple/30 border-t-mindpulse-purple rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="glass-card rounded-xl p-8 text-center">
+          <p className="text-mindpulse-coral mb-4">❌ {error}</p>
+          <button
+            onClick={fetchData}
+            className="gradient-btn text-white font-medium py-2 px-6 rounded-xl flex items-center gap-2 mx-auto"
+          >
+            <RefreshCw className="w-4 h-4" /> Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const statCards = [
+    { label: "Total Check-ins", value: String(stats.totalCheckins), trend: "", trendUp: true, icon: Users, gradient: "from-mindpulse-purple to-blue-500" },
+    { label: "At-Risk Students", value: String(stats.atRiskCount), trend: "", trendUp: true, icon: AlertTriangle, gradient: "from-mindpulse-coral to-red-600", isAlert: true },
+    { label: "Avg Campus Mood", value: `${stats.avgMood}/5`, trend: "", trendUp: stats.avgMood >= 3, icon: TrendingUp, gradient: "from-mindpulse-amber to-orange-500" },
+    { label: "Interventions", value: String(stats.interventions), trend: "", trendUp: true, icon: Heart, gradient: "from-mindpulse-teal to-green-500" },
+  ];
 
   return (
     <div className="p-8">
       {/* Modal */}
       {activeAlert && (
-        <SendMessageModal alert={activeAlert} onClose={() => setActiveAlert(null)} />
+        <SendMessageModal
+          alert={activeAlert}
+          onClose={() => setActiveAlert(null)}
+          onSent={fetchData}
+        />
       )}
 
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-mindpulse-text mb-2">
-          Good morning, Dr. Sharma 👋
-        </h1>
-        <p className="text-mindpulse-muted">Here&apos;s your campus wellness snapshot.</p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-mindpulse-text mb-2">
+            Welcome back, {user?.uniqueId} 👋
+          </h1>
+          <p className="text-mindpulse-muted">Here&apos;s your campus wellness snapshot.</p>
+        </div>
+        <button
+          onClick={fetchData}
+          className="p-2.5 rounded-xl bg-white/5 text-mindpulse-muted hover:text-mindpulse-text hover:bg-white/10 transition-all"
+          title="Refresh"
+        >
+          <RefreshCw className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {stats.map((stat) => (
+        {statCards.map((stat) => (
           <div key={stat.label} className="glass-card rounded-xl p-5">
             <div className="flex items-start justify-between mb-3">
               <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${stat.gradient} flex items-center justify-center`}>
                 <stat.icon className="w-5 h-5 text-white" />
-              </div>
-              <div className={`flex items-center gap-1 text-sm font-medium ${
-                stat.trendUp ? (stat.isAlert ? "text-mindpulse-coral" : "text-mindpulse-teal") : "text-mindpulse-coral"
-              }`}>
-                {stat.trendUp ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
-                {stat.trend}
               </div>
             </div>
             <p className={`text-3xl font-bold mb-1 ${stat.isAlert ? "text-mindpulse-coral" : "gradient-text"}`}>
@@ -225,7 +309,7 @@ export default function DashboardPage() {
           </h2>
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={moodData}>
+              <AreaChart data={moodTrend}>
                 <defs>
                   <linearGradient id="moodGradient" x1="0" y1="0" x2="1" y2="0">
                     <stop offset="0%" stopColor="#6C63FF" />
@@ -263,6 +347,7 @@ export default function DashboardPage() {
                   strokeWidth={3}
                   fill="url(#areaGradient)"
                   name="Average Mood"
+                  connectNulls
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -282,38 +367,62 @@ export default function DashboardPage() {
         {/* Alerts */}
         <div className="lg:col-span-2 space-y-4">
           <h2 className="text-lg font-semibold text-mindpulse-text">🚨 Active Alerts</h2>
-          <div className="space-y-3 max-h-[320px] overflow-y-auto pr-2">
-            {alerts.map((alert, index) => (
-              <div
-                key={index}
-                className={`glass-card rounded-xl p-4 border-l-4 ${
-                  alert.severity === "high" ? "border-l-mindpulse-coral" : "border-l-mindpulse-amber"
-                }`}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <code className="text-sm font-mono text-mindpulse-text">{alert.id}</code>
-                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                    alert.severity === "high"
-                      ? "bg-mindpulse-coral/20 text-mindpulse-coral"
-                      : "bg-mindpulse-amber/20 text-mindpulse-amber"
-                  }`}>
-                    {alert.severity}
-                  </span>
-                </div>
-                <span className="inline-block px-2 py-0.5 text-xs rounded bg-white/5 text-mindpulse-muted mb-2">
-                  {alert.department}
-                </span>
-                <p className="text-sm text-mindpulse-muted mb-3">{alert.message}</p>
-                <button
-                  onClick={() => setActiveAlert(alert)}
-                  className="flex items-center gap-2 text-sm font-medium text-mindpulse-purple hover:text-mindpulse-teal transition-colors"
+          {alerts.length === 0 ? (
+            <div className="glass-card rounded-xl p-8 text-center">
+              <span className="text-4xl block mb-3">✅</span>
+              <p className="text-mindpulse-muted">No active alerts. All students are doing well!</p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[320px] overflow-y-auto pr-2">
+              {alerts.map((alert, index) => (
+                <div
+                  key={index}
+                  className={`glass-card rounded-xl p-4 border-l-4 ${
+                    alert.severity === "high" ? "border-l-mindpulse-coral" : "border-l-mindpulse-amber"
+                  }`}
                 >
-                  <Send className="w-4 h-4" />
-                  Send Message
-                </button>
-              </div>
-            ))}
-          </div>
+                  <div className="flex items-start justify-between mb-2">
+                    <code className="text-sm font-mono text-mindpulse-text">{alert.tokenId}</code>
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                      alert.severity === "high"
+                        ? "bg-mindpulse-coral/20 text-mindpulse-coral"
+                        : "bg-mindpulse-amber/20 text-mindpulse-amber"
+                    }`}>
+                      {alert.severity}
+                    </span>
+                  </div>
+                  <span className="inline-block px-2 py-0.5 text-xs rounded bg-white/5 text-mindpulse-muted mb-2">
+                    {alert.department}
+                  </span>
+                  <p className="text-sm text-mindpulse-muted mb-3">{alert.reason}</p>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setActiveAlert({
+                        id: alert._id || "",
+                        tokenId: alert.tokenId,
+                        department: alert.department,
+                        severity: alert.severity,
+                        reason: alert.reason,
+                      })}
+                      className="flex items-center gap-2 text-sm font-medium text-mindpulse-purple hover:text-mindpulse-teal transition-colors"
+                    >
+                      <Send className="w-4 h-4" />
+                      Send Message
+                    </button>
+                    {alert._id && (
+                      <button
+                        onClick={() => handleResolve(alert._id!)}
+                        className="flex items-center gap-2 text-sm font-medium text-mindpulse-teal hover:text-mindpulse-text transition-colors"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        Resolve
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -322,38 +431,48 @@ export default function DashboardPage() {
         <div className="p-6 border-b border-white/5">
           <h2 className="text-lg font-semibold text-mindpulse-text">Recent Check-ins</h2>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/5">
-                <th className="px-6 py-4 text-left text-sm font-medium text-mindpulse-muted">Student ID</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-mindpulse-muted">Department</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-mindpulse-muted">Mood Score</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-mindpulse-muted">Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentCheckins.map((checkin, index) => (
-                <tr
-                  key={index}
-                  className="border-b border-white/5 hover:bg-mindpulse-purple/5 transition-colors"
-                >
-                  <td className="px-6 py-4">
-                    <code className="text-sm font-mono text-mindpulse-text">{checkin.id}</code>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-mindpulse-muted">{checkin.department}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2.5 h-2.5 rounded-full ${getMoodColor(checkin.mood)}`} />
-                      <span className="text-sm text-mindpulse-text">{checkin.mood}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-mindpulse-muted">{checkin.time}</td>
+        {recentCheckins.length === 0 ? (
+          <div className="p-8 text-center text-mindpulse-muted">
+            No check-ins recorded yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/5">
+                  <th className="px-6 py-4 text-left text-sm font-medium text-mindpulse-muted">Student ID</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-mindpulse-muted">Department</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-mindpulse-muted">Mood</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-mindpulse-muted">Stress</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-mindpulse-muted">Sleep</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-mindpulse-muted">Time</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {recentCheckins.map((checkin, index) => (
+                  <tr
+                    key={index}
+                    className="border-b border-white/5 hover:bg-mindpulse-purple/5 transition-colors"
+                  >
+                    <td className="px-6 py-4">
+                      <code className="text-sm font-mono text-mindpulse-text">{checkin.tokenId}</code>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-mindpulse-muted">{checkin.department}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2.5 h-2.5 rounded-full ${getMoodColor(checkin.mood)}`} />
+                        <span className="text-sm text-mindpulse-text">{checkin.mood}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-mindpulse-text">{checkin.stress}/10</td>
+                    <td className="px-6 py-4 text-sm text-mindpulse-text">{checkin.sleep}h</td>
+                    <td className="px-6 py-4 text-sm text-mindpulse-muted">{timeAgo(checkin.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

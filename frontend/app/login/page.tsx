@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, Mail, Eye, EyeOff } from "lucide-react";
-
-const VALID_EMAIL = "counsellor@miet.ac.in";
-const VALID_PASSWORD = "mindpulse123";
+import Link from "next/link";
+import { Lock, Mail, Eye, EyeOff, User } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const { login } = useAuth();
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -20,13 +20,25 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    if (email === VALID_EMAIL && password === VALID_PASSWORD) {
-      localStorage.setItem("mindpulse_auth", "true");
-      router.push("/dashboard");
-    } else {
-      setError("Invalid credentials. Please try again.");
+    try {
+      const { uniqueId } = await login(identifier, password);
+      // Redirect based on role — we get the role from auth context after login
+      // The getMe call in context will set the user, but we can check the response
+      // For now, let's fetch role from the context after login resolves
+      // Simpler: check if user used a counsellor-like identifier or fetch from context
+      // The auth context updates user after login, so we check the role
+      const token = localStorage.getItem("mindpulse_token");
+      if (token) {
+        // Decode JWT to get role (payload is in part 1)
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        if (payload.role === "counsellor") {
+          router.push("/dashboard");
+        } else {
+          router.push("/student");
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed. Please try again.");
     }
 
     setLoading(false);
@@ -47,10 +59,12 @@ export default function LoginPage() {
             <span className="text-3xl">🧠</span>
             <span className="text-2xl font-bold gradient-text">MindPulse</span>
           </div>
-          <p className="text-mindpulse-muted text-sm">Counsellor & Admin Portal</p>
+          <p className="text-mindpulse-muted text-sm">Welcome back to MindPulse</p>
           <p className="text-xs text-mindpulse-muted/60 mt-1">
-            Student check-in is on the{" "}
-            <a href="/" className="text-mindpulse-teal hover:underline">main page →</a>
+            Don&apos;t have an account?{" "}
+            <Link href="/register" className="text-mindpulse-teal hover:underline">
+              Register here →
+            </Link>
           </p>
         </div>
 
@@ -61,18 +75,18 @@ export default function LoginPage() {
           </h2>
 
           <form onSubmit={handleLogin} className="space-y-4">
-            {/* Email */}
+            {/* Email or Unique ID */}
             <div>
               <label className="block text-sm font-medium text-mindpulse-muted mb-2">
-                Email
+                Email or Unique ID
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mindpulse-muted" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mindpulse-muted" />
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="counsellor@miet.ac.in"
+                  type="text"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder="email@example.com or MP-1234-A"
                   required
                   className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-mindpulse-text placeholder:text-mindpulse-muted/50 focus:outline-none focus:ring-2 focus:ring-mindpulse-purple/50 transition-all"
                 />
@@ -111,11 +125,6 @@ export default function LoginPage() {
               </p>
             )}
 
-            {/* Demo credentials hint */}
-            <div className="bg-white/5 rounded-lg p-3 text-xs text-mindpulse-muted text-center">
-              Demo login: <span className="text-mindpulse-teal">counsellor@miet.ac.in</span> / <span className="text-mindpulse-teal">mindpulse123</span>
-            </div>
-
             {/* Submit */}
             <button
               type="submit"
@@ -130,9 +139,14 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-xs text-mindpulse-muted mt-6">
-            Admin access? Contact your IT department.
-          </p>
+          <div className="text-center mt-6">
+            <Link
+              href="/"
+              className="text-xs text-mindpulse-muted hover:text-mindpulse-teal transition-colors"
+            >
+              ← Back to Home
+            </Link>
+          </div>
         </div>
       </div>
     </div>

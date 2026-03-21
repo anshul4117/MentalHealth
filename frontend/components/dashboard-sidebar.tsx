@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Brain, LayoutDashboard, AlertTriangle, MessageSquare, BarChart3, Settings, LogOut } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/alerts", label: "Alerts", icon: AlertTriangle, badge: 7 },
+  { href: "/dashboard/alerts", label: "Alerts", icon: AlertTriangle },
   { href: "/dashboard/messages", label: "Messages", icon: MessageSquare },
   { href: "/analytics", label: "Reports", icon: BarChart3 },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
@@ -15,11 +16,15 @@ const navItems = [
 export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { user, logout } = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem("mindpulse_auth");
+    logout();
     router.push("/login");
   };
+
+  // Get initials from uniqueId
+  const initials = user?.uniqueId ? user.uniqueId.slice(3, 5) : "MP";
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-[260px] bg-mindpulse-sidebar flex flex-col border-r border-white/5">
@@ -65,11 +70,6 @@ export function DashboardSidebar() {
                   )}
                   <item.icon className={`w-5 h-5 ${isActive ? "text-mindpulse-purple" : ""}`} />
                   <span className="font-medium">{item.label}</span>
-                  {item.badge && (
-                    <span className="ml-auto px-2 py-0.5 text-xs font-semibold rounded-full bg-mindpulse-coral text-white">
-                      {item.badge}
-                    </span>
-                  )}
                 </Link>
               </li>
             );
@@ -81,11 +81,15 @@ export function DashboardSidebar() {
       <div className="p-4 border-t border-white/5">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-mindpulse-purple to-mindpulse-teal flex items-center justify-center text-white font-semibold text-sm">
-            PS
+            {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-mindpulse-text truncate">Dr. Priya Sharma</p>
-            <p className="text-xs text-mindpulse-muted truncate">Head Counsellor</p>
+            <p className="text-sm font-medium text-mindpulse-text truncate font-mono">
+              {user?.uniqueId || "Loading..."}
+            </p>
+            <p className="text-xs text-mindpulse-muted truncate capitalize">
+              {user?.role || "Counsellor"} · {user?.course}
+            </p>
           </div>
         </div>
 
