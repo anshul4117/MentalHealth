@@ -304,62 +304,140 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
         {/* Mood Chart */}
         <div className="lg:col-span-3 glass-card rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-mindpulse-text mb-4">
-            Mood Trend — Last 14 Days
-          </h2>
-          <div className="h-[280px]">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-mindpulse-text">
+              Campus Wellness — Last 14 Days
+            </h2>
+            <div className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 text-xs text-mindpulse-muted">
+              📊 {moodTrend.length} data points
+            </div>
+          </div>
+          <div className="h-[340px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={moodTrend}>
+              <AreaChart data={moodTrend} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="moodGradient" x1="0" y1="0" x2="1" y2="0">
                     <stop offset="0%" stopColor="#6C63FF" />
                     <stop offset="100%" stopColor="#00D4AA" />
                   </linearGradient>
-                  <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6C63FF" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#00D4AA" stopOpacity={0} />
+                  <linearGradient id="moodAreaFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#6C63FF" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="#6C63FF" stopOpacity={0.02} />
+                  </linearGradient>
+                  <linearGradient id="stressAreaFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#FF6B6B" stopOpacity={0.15} />
+                    <stop offset="100%" stopColor="#FF6B6B" stopOpacity={0.02} />
+                  </linearGradient>
+                  <linearGradient id="sleepAreaFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#00D4AA" stopOpacity={0.15} />
+                    <stop offset="100%" stopColor="#00D4AA" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="date" stroke="#8B8FA8" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#8B8FA8" fontSize={12} tickLine={false} axisLine={false} domain={[1, 5]} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  stroke="#8B8FA8"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  dy={8}
+                />
+                <YAxis
+                  stroke="#8B8FA8"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  domain={[0, 10]}
+                  ticks={[0, 2, 4, 6, 8, 10]}
+                />
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#0F1729",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: "8px",
-                    color: "#F0F0FF",
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null;
+                    return (
+                      <div className="bg-[#0F1729] border border-white/10 rounded-xl p-4 shadow-xl min-w-[180px]">
+                        <p className="text-xs font-medium text-mindpulse-muted mb-3 border-b border-white/5 pb-2">{label}</p>
+                        {payload.map((entry, i) => (
+                          <div key={i} className="flex items-center justify-between gap-4 mb-1.5">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                              <span className="text-xs text-mindpulse-muted">{entry.name}</span>
+                            </div>
+                            <span className="text-sm font-semibold text-mindpulse-text">
+                              {typeof entry.value === 'number' ? entry.value.toFixed(1) : entry.value}
+                            </span>
+                          </div>
+                        ))}
+                        {payload[0]?.payload?.checkins != null && (
+                          <p className="text-[10px] text-mindpulse-muted/60 mt-2 pt-2 border-t border-white/5">
+                            {payload[0].payload.checkins} check-in{payload[0].payload.checkins !== 1 ? 's' : ''} that day
+                          </p>
+                        )}
+                      </div>
+                    );
                   }}
                 />
                 <Line
                   type="monotone"
                   dataKey="threshold"
                   stroke="#FF6B6B"
-                  strokeDasharray="5 5"
-                  strokeWidth={2}
+                  strokeDasharray="6 4"
+                  strokeWidth={1.5}
                   dot={false}
-                  name="Crisis Threshold"
+                  name="Crisis Line"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="stress"
+                  stroke="#FF6B6B"
+                  strokeWidth={2}
+                  fill="url(#stressAreaFill)"
+                  name="Avg Stress"
+                  connectNulls
+                  dot={{ r: 3, fill: '#FF6B6B', strokeWidth: 0 }}
+                  activeDot={{ r: 5, stroke: '#FF6B6B', strokeWidth: 2, fill: '#0F1729' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="sleep"
+                  stroke="#00D4AA"
+                  strokeWidth={2}
+                  fill="url(#sleepAreaFill)"
+                  name="Avg Sleep (hrs)"
+                  connectNulls
+                  dot={{ r: 3, fill: '#00D4AA', strokeWidth: 0 }}
+                  activeDot={{ r: 5, stroke: '#00D4AA', strokeWidth: 2, fill: '#0F1729' }}
                 />
                 <Area
                   type="monotone"
                   dataKey="mood"
                   stroke="url(#moodGradient)"
                   strokeWidth={3}
-                  fill="url(#areaGradient)"
-                  name="Average Mood"
+                  fill="url(#moodAreaFill)"
+                  name="Avg Mood"
                   connectNulls
+                  dot={{ r: 4, fill: '#6C63FF', strokeWidth: 0 }}
+                  activeDot={{ r: 6, stroke: '#6C63FF', strokeWidth: 2, fill: '#0F1729' }}
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex items-center gap-6 mt-4 text-sm">
+          {/* Legend */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-5 pt-4 border-t border-white/5 text-sm">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-mindpulse-purple to-mindpulse-teal" />
-              <span className="text-mindpulse-muted">Average Mood</span>
+              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-[#6C63FF] to-[#00D4AA]" />
+              <span className="text-mindpulse-muted">Avg Mood <span className="text-mindpulse-text/50">(1–5)</span></span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-0.5 bg-mindpulse-coral" style={{ backgroundImage: "repeating-linear-gradient(90deg, #FF6B6B 0, #FF6B6B 5px, transparent 5px, transparent 10px)" }} />
-              <span className="text-mindpulse-muted">Crisis Threshold</span>
+              <div className="w-3 h-3 rounded-full bg-[#FF6B6B]" />
+              <span className="text-mindpulse-muted">Avg Stress <span className="text-mindpulse-text/50">(1–10)</span></span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#00D4AA]" />
+              <span className="text-mindpulse-muted">Avg Sleep <span className="text-mindpulse-text/50">(hrs)</span></span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-0.5" style={{ backgroundImage: "repeating-linear-gradient(90deg, #FF6B6B 0, #FF6B6B 5px, transparent 5px, transparent 10px)" }} />
+              <span className="text-mindpulse-muted">Crisis Line</span>
             </div>
           </div>
         </div>
