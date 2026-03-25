@@ -3,15 +3,15 @@
 > **Hack Energy 2.0** | HackGyanVerse Community | Healthcare Track
 > Team NextHope | MCA Students
 
-![MindPulse Banner](https://mind-pulse-iota.vercel.app/icon.svg)
+![MindPulse Banner](https://mindpulse-lovat.vercel.app/icon.svg)
 
 ## 🌐 Live Demo
 
 | | Link |
 |---|---|
-| 🖥️ **Frontend (Live)** | [https://mind-pulse-iota.vercel.app](https://mind-pulse-iota.vercel.app) |
-| ⚙️ **Backend API** | [https://mindpulse-a403.onrender.com](https://mindpulse-a403.onrender.com) |
-| 📂 **GitHub Repo** | [https://github.com/Akshay1267/MindPulse](https://github.com/Akshay1267/MindPulse) |
+| 🖥️ **Frontend (Live)** | [https://mindpulse-lovat.vercel.app](https://mindpulse-lovat.vercel.app) |
+| ⚙️ **Backend API** | [https://mindpulse-backend-5190.onrender.com](https://mindpulse-backend-5190.onrender.com) |
+| 📂 **GitHub Repo** | [https://github.com/anshul4117/MentalHealth](https://github.com/anshul4117/MentalHealth) |
 
 > ⚠️ Backend is on Render free tier — first request may take 30–60 seconds to wake up.
 
@@ -143,7 +143,7 @@ MindPulse/
 
 ### Example Request
 ```json
-POST https://mindpulse-a403.onrender.com/api/checkin
+POST https://mindpulse-backend-5190.onrender.com/api/checkin
 
 {
   "tokenId": "MP-8821-X",
@@ -200,7 +200,7 @@ Counsellors are alerted for HIGH and MEDIUM risk students — anonymously, witho
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/Akshay1267/MindPulse.git
+git clone https://github.com/anshul4117/MentalHealth.git
 cd MindPulse
 ```
 
@@ -250,19 +250,19 @@ MindPulse is built privacy-first:
 
 ### Student Check-in Page
 > Anonymous token generation + mood check-in form
-> Live: [https://mind-pulse-iota.vercel.app](https://mind-pulse-iota.vercel.app)
+> Live: [https://mindpulse-lovat.vercel.app](https://mindpulse-lovat.vercel.app)
 
 ### Counsellor Dashboard
 > Real-time mood trends + active alerts + send message
-> Live: [https://mind-pulse-iota.vercel.app/dashboard](https://mind-pulse-iota.vercel.app/dashboard)
+> Live: [https://mindpulse-lovat.vercel.app/dashboard](https://mindpulse-lovat.vercel.app/dashboard)
 
 ### Admin Analytics
 > Department mood breakdown + stress heatmap + AI insights
-> Live: [https://mind-pulse-iota.vercel.app/analytics](https://mind-pulse-iota.vercel.app/analytics)
+> Live: [https://mindpulse-lovat.vercel.app/analytics](https://mindpulse-lovat.vercel.app/analytics)
 
 ### Self-Help Resources
 > Curated tools for instant relief, peer support, academic stress
-> Live: [https://mind-pulse-iota.vercel.app/resources](https://mind-pulse-iota.vercel.app/resources)
+> Live: [https://mindpulse-lovat.vercel.app/resources](https://mindpulse-lovat.vercel.app/resources)
 
 ---
 
